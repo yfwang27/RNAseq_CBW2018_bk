@@ -1,0 +1,933 @@
+```{r setup, include=FALSE}
+opts_chunk$set(cache=TRUE)
+```
+
+
+Analysis of RNAseq data
+========================================================
+author:MRC LMS Bioinformatics Core
+date: 27 September 2018
+width: 1440
+height: 1100
+autosize: true
+font-import: <link href='http://fonts.googleapis.com/css?family=Slabo+27px' rel='stylesheet' type='text/css'>
+font-family: 'Slabo 27px', serif;
+css:style.css
+
+
+RNA-seq Introduction 
+========================================================
+
+RNA Sequencing (**RNA-seq**) is a well established technique which allows for studying expression profiles of thousands of genes/transcripts simultaneously. 
+
+<div align="center">
+<img src="figures/nrg2484-f1.jpg" alt="gene" height="700" width="600">
+</div>
+
+* Nature Reviews Genetics 10, 57-63 (January 2009)
+
+
+RNA-seq analysis pipeline
+====================================
+
+<div align="center">
+<img src="figures/RNAseqpipeline.png" alt="pipe" height="800" width="1027">
+</div>
+
+
+Contents
+====================================
+* [Quality Assessment](#/quality).
+* [Read alignment](#/alignment).
+* [Read feature counting](#/counting).
+* [Differential gene expression analysis](#/de).
+* [Exploring and saving results](#/explore).
+* [Functional analysis - Gene Ontology](#/go).
+
+
+
+Quality Assessment - FastQC (1/2)
+====================================
+id: quality
+
+<div align="center">
+<img src="figures/fastqc_1.png" alt="pipe" height="700" width="1100">
+</div>
+
+
+Quality Assessment - FastQC (2/2)
+====================================
+
+<div align="center">
+<img src="figures/fastqc_2.png" alt="pipe" height="700" width="1100">
+</div>
+
+
+Read alignment - gapped aligner (1/2)
+====================================
+id: alignment
+
+First step in RNA-Seq data analysis is to align the raw reads to genome/transcriptome. 
+
+For RNASeq data alignment, aligner need to be able to align across the exon-exon junction.
+
+<div align="center">
+<img src="figures/aligner.png" alt="pipe" height="450" width="1100">
+</div>
+
+* Garber et al., 2011. Nat Methods. 8(6):469-77. Table 1
+
+
+Read alignment - gapped aligner (2/2)
+====================================
+
+<div align="center">
+<img src="figures/aligner2.png" alt="pipe" height="600" width="1100">
+</div>
+
+* Garber et al., 2011. Nat Methods. 8(6):469-77. Figure 1
+
+
+Check before you carry on ...
+========================================================
+
+* What genome is involved?
+   - Is it a well annotated organism or a poorly annotated one?
+   - A different analysis strategy depending on the genome?
+
+* Single end or Paired end sequencing experiment?
+
+* Strand specific or non stand specific
+  - Useful to distinguish sense and antisense transcripts  
+
+
+unstranded RNAseq
+========================================================
+
+<div align="center">
+<img src="figures/Stranded_non.png" height="700" width="950">
+</div>
+
+Masp2 (sense) and Tardbp (antisense)
+
+fr-firststrand RNAseq
+========================================================
+
+<div align="center">
+<img src="figures/Stranded_one.png" height="700" width="950">
+</div>
+
+Masp2 (sense) and Tardbp (antisense)
+
+========================================================
+
+<div align="center">
+<img src="figures/Stranded_two.png" height="700" width="950">
+</div>
+
+Masp2 (sense) and Tardbp (antisense)
+
+
+
+Read Counting (1/2)
+====================================
+id: counting
+
+After alignment, next step is to assign reads to features such as genes, transcripts
+or exons.
+
+* htseq-count
+
+	Anders et al., 2014. Bioinformatics. 31(2):166-9
+	
+* featurecount function in Rsubread R package
+
+	Liao et al., 2014. Bioinformatics. 30(7):923-30
+
+
+
+Read Counting (2/2)
+====================================
+
+<div align="center">
+<img src="figures/readcount.png" alt="pipe" height="700" width="1100">
+</div>
+	
+http://htseq.readthedocs.io/en/master/count.html
+
+
+
+Check before you carry on again ...
+========================================================
+
+* How many factors involved in experiment (genotype, treatment, time course etc.)
+
+   - Single factor vs multi factor analysis? 
+   
+   - Interactions?
+   
+* In this session, we will only discuss the single factor analysis
+   
+   
+
+RNA-seq analysis pipeline
+====================================
+
+<div align="center">
+<img src="figures/RNAseqpipeline.png" alt="pipe" height="800" width="1027">
+</div>
+
+
+
+Set working directory
+========================================================
+
+Before running any of the code, we need to set the working directory to the folder we unarchived. 
+You may navigate to the unarchived RNAseq_CBW2018/course folder in the Rstudio menu
+
+**Session -> Set Working Directory -> Choose Directory**
+
+or in the console, 
+
+Use the getwd() to see where your current directory is
+
+```{r,eval=F} 
+
+getwd()
+
+```
+
+Use setwd() to set up your directory in the console
+
+```{r,eval=F} 
+
+setwd("/PathToMyDownload/RNAseq_CBW2018/course")
+
+
+```
+
+
+Material
+====================================
+
+Dataset
+* [GSE68360] (http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE68360)
+
+We have generated the following files for this session.
+
+- **target** file that contain the sample information.
+
+targets.txt
+
+- **count** matrix  containing count table
+
+AllCounts.csv
+
+
+```{r,eval=TRUE,echo=FALSE}
+
+library(edgeR)
+library(DESeq2)
+library(goseq)
+library(RColorBrewer)
+library(ggplot2)
+library("pheatmap")
+library(KEGG.db)
+library(org.Mm.eg.db)
+library(biomaRt)
+
+```
+
+
+
+Read sample information
+========================================================
+id: de
+
+Read in **targets.txt** file by using read.table function
+
+```{r,eval=TRUE,echo=TRUE}
+
+targets <- read.table("targets.txt",sep="\t",header=TRUE)  
+
+targets
+
+```
+
+Read count data
+========================================================
+
+Load count data by using read.csv function
+
+```{r,eval=TRUE,echo=TRUE}
+
+AllCounts<-read.csv(file="AllCounts.csv",row.names = 1)
+
+```
+
+ Show first few rows of "AllCounts" object and the class of AllCounts object
+
+```{r,eval=TRUE,echo=TRUE}
+
+
+head(AllCounts)
+
+
+class(AllCounts)
+```
+
+
+Prepare deseqdataset object 
+========================================================
+
+ Collect sample information
+
+```{r,eval=TRUE,echo=TRUE}  
+
+                              
+cData<-data.frame(name=targets$Sample,                                                                          Group=targets$Group,Batch=targets$Batch)
+
+rownames(cData)<-cData[,1]
+
+```
+
+
+
+Prepare deseqdataset object (Continued)
+========================================================
+
+ Construct deseqdataset object
+
+The class used by the DESeq2 package to store the read counts is **DESeqDataSet**.
+
+
+```{r,eval=TRUE,echo=TRUE}   
+
+library(DESeq2)
+
+dds<-DESeqDataSetFromMatrix(
+    countData= AllCounts,colData=cData,
+    design=~Group)
+```
+
+Differential expression analysis
+========================================================
+
+The standard differential expression analysis steps are wrapped into a single function, **DESeq**,
+which performs normalization, fitting to the model and statistical testing.
+
+
+```{r,eval=TRUE,echo=TRUE}
+ 
+
+dds<-DESeq(dds)
+
+?DESeq
+
+```
+
+The function DESeq runs the following functions in order,
+
+**estimateSizeFactors()**
+
+**estimateDispersions()**
+
+**nbinomWaldTest()**
+
+
+DESeq function - estimateSizeFactors()
+========================================================
+
+
+1 - **Estimation of size factors**
+
+The sizeFactors vector assigns to each column of the count matrix a value, the size factor, such that  count  values  in  the  columns  can  be  brought  to  a  common  scale  by  dividing  by  the  corresponding size factor.
+
+```{r,eval=TRUE,echo=TRUE}
+#  estimateSizeFactors()
+
+sizeFactors(dds)
+
+```
+
+Calculating  sizeFactors
+========================================================
+
+<div align="center">
+<img src="sizefactor.png" alt="gene" height="768" width="924">
+</div>
+
+DESeq2 calculation of the sizeFactors 
+========================================================
+
+Please refer to Equation (5):
+
+**Anders S and Huber W. (2010). Differential expression analysis for sequence count data. *Genome Biol.*:11(10):R106.**
+
+$$
+\hat{s_{j}}=\begin{matrix}
+  median \\
+  i
+ \end{matrix}\frac{k_{ij}}{(\prod_{v=1}^{m}k_{iv})^{1/m}}
+ 
+ \\
+ \hat{s_{j}}:\text{estimated size factor for the jth sample}
+ \\
+ 
+$$
+The denominator of this expression can be interpreted as a pseudo-reference sample obtained by taking the geometric mean across samples. Thus, each estimated size factor is computed as the median of the ratios of the j-th sample's counts to those of the pseudo-reference.
+
+
+DESeq function - estimateDispersions()
+========================================================
+
+2 - **Estimation of dispersion**
+
+This function obtains gene-wide dispersion estimates. Then, a curve is fit to the estimates to capture the overall trend of dispersion-mean dependence. 
+
+```{r,eval=TRUE,echo=TRUE}
+#  estimateDispersions()
+
+head(dispersions(dds))
+
+plotDispEsts(dds)
+
+```
+
+
+DESeq function - nbinomWaldTest()
+========================================================
+3- **Hypothesis test for differential expression**
+
+
+For significance testing, DESeq2 by default uses a Wald test, where
+the function tests whether each model coefficient differs significantly from zero, using previously calculated sizeFactors and dispersion estimates.
+
+The Wald test P values  are adjusted for multiple testing using the procedure of Benjamini and Hochberg.
+
+
+```{r,eval=FALSE,echo=TRUE}
+
+nbinomWaldTest()
+
+```
+
+
+
+Getting results
+========================================================
+
+Results tables are generated using the function **results()**, which extracts a results table with log2 fold changes, p  values and adjusted p values.
+
+ Use the function "results()"
+
+```{r,eval=TRUE,echo=TRUE}   
+
+res<-results(dds) 
+
+```
+
+ Order results by adjusted p value
+
+```{r,eval=TRUE,echo=TRUE}   
+
+resOrdered<-res[order(res$padj),]
+
+?results      
+      
+```
+
+
+Getting results
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}    
+ 
+head(resOrdered)
+      
+```
+
+Add Gene symbol
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}   
+
+# Add Gene Symbols
+
+library(biomaRt)
+
+mart=useMart('ENSEMBL_MART_ENSEMBL',
+dataset='mmusculus_gene_ensembl',
+host="may2012.archive.ensembl.org")
+
+bm<-getBM(attributes=c('ensembl_gene_id','mgi_symbol'),
+filters ='ensembl_gene_id',
+values=rownames(resOrdered), mart=mart)
+
+# see the first few rows of "bm" object
+head(bm)      
+```
+
+Add Gene symbol (Continued)
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}    
+# merge the Gene_symbol to our DE dataset
+resAnnotated <- merge(as.data.frame(resOrdered),bm,by.x=0,by.y=1)
+head(resAnnotated)
+# change the column name
+colnames(resAnnotated)[1]<-"ensembl_gene_id"
+      
+```
+
+Add Gene symbol (Continued)
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}    
+# Order results by adjusted p value
+resAnnotated<-resAnnotated[order(resAnnotated$pvalue,decreasing=F),]
+
+# show the result with gene symbol annotation
+head(resAnnotated)
+      
+```
+
+Saving DEseq2 results
+========================================================
+
+Save the result in ".txt" or ".csv" format
+
+```{r,eval=TRUE,echo=TRUE}    
+write.table(resAnnotated,file="DESeq_result.txt",sep="\t")
+write.csv(resAnnotated,file="DESeq_result.csv",  row.names=F)
+      
+```
+
+<div align="center">
+<img src="figures/DESeq2_output.png" alt="gene" height="500" width="827">
+</div>
+
+Exploring results
+========================================================
+
+We can summarize some basic tallies using the summary function.
+
+```{r,eval=TRUE,echo=TRUE}
+
+summary(res)
+  
+# How many adjusted p-values were less than 0.05?
+sum(res$padj < 0.05, na.rm=TRUE)
+  
+```
+
+How DESeq2 defines outliers - cooksCutoff
+========================================================
+
+theshold on Cook's distance, such that if one or more samples for a row have a distance higher, the p-value for the row is set to NA.
+
+```{r,eval=TRUE,echo=TRUE}
+
+summary(res)
+  
+```
+
+How DESeq2 filters low counts - independentFiltering
+========================================================
+
+A threshold on the filter statistic is found which optimizes the number of adjusted p values lower than a significance level alpha (we use the standard variable name for significance level, though it is unrelated to the dispersion parameter α). The theory behind independent filtering is discussed in greater detail below. The adjusted p values for the genes which do not pass the filter threshold are set to NA.
+
+```{r,eval=TRUE,echo=TRUE}
+
+summary(res)
+  
+```
+
+MA plot
+========================================================
+
+The  function **plotMA()** shows  the  log2  fold  changes  attributable  to  a  given  variable  over  the  mean of normalized counts.  Points will be colored red if the adjusted p value is less than 0.1.  Points which fall out of the window are plotted as open triangles pointing either up or down.
+
+```{r,eval=TRUE,echo=TRUE}
+
+plotMA(res, main="DESeq2", ylim=c(-4,4))
+
+```
+
+After calling plotMA, we can use the function identify to interactively detect the row number of individual
+genes by clicking on the plot. 
+Recover the gene identifiers by saving the resulting indices:
+
+```{r,eval=FALSE,echo=TRUE}
+idx <- identify(res$baseMean, res$log2FoldChange)
+rownames(res)[idx]
+
+```
+
+
+Plot counts
+========================================================
+ **Plot of normalized counts for a single gene on log scale**
+
+```{r,eval=TRUE,echo=TRUE}
+plotCounts(dds,gene=which.min(res$padj),intgroup="Group")
+
+```
+
+Coffee break and Exercise
+=========================================================
+
+
+* [RNAseq DE Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercise_BasicDifferentialAnalysis.html)
+
+Solutions
+=========================================================
+
+* [RNAseq DE Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_BasicDifferentialAnalysis.html)
+
+
+
+Transformation of count data
+========================================================
+id: explore
+
+In order to test for differential expression, we operate on raw counts. However for other downstream analyses ( e.g. visualization or clustering) it is useful to work with transformed versions of the count data.
+
+Aim of these transformations,is  to  remove  the  dependence  of  the  variance on  the  mean, particularly  the  high  variance  of  the  logarithm  of  count  data  when  the  mean  is  low. 
+
+    y = log2(n + n0)
+            
+    n represents the count values and n0 is a positive constant.
+    
+ There are two alternative approaches of choosing the parameter equivalent to n0 above.
+
+**1. The regularized logarithm or rlog**
+
+**2. variance stabilizing transformation or vst**
+
+
+Both transforms the original count data to the log2 scale normalized to library size.
+
+
+```{r,eval=TRUE,echo=TRUE}
+rld<-rlog(dds)  
+
+vsd <- varianceStabilizingTransformation(dds)
+
+```
+
+Transformation of count data
+========================================================
+
+<div align="left">
+<img src="figures/gene.png" alt="gene" height="400" width="600">
+</div>
+<div align="topright">
+<img src="figures/rlog.png" alt="gene" height="400" width="600">
+</div>
+
+
+========================================================
+
+<div align="center">
+<img src="figures/vst.png" alt="gene" height="400" width="600">
+</div>
+
+
+Data quality assessment 
+========================================================
+
+Data quality assessment and quality control  are essential steps
+of any data analysis. These steps should typically be performed very early in the analysis of a new data set,
+preceding or in parallel to the differential expression testing.
+
+We will use following visualization tools to assess the data quality.
+
+* Heatmap of count matrix
+
+* Heatmap of sample to sample distances
+
+* Principal component analysis plot
+
+
+Heatmap of the count matrix
+========================================================
+
+To explore a counts matrix, it is often useful to look it as heatmap.
+
+
+
+```{r,eval=TRUE,echo=TRUE}
+
+library("pheatmap")
+select <-order(rowMeans(counts(dds,normalized=TRUE)),decreasing=TRUE)[1:20]
+
+
+pheatmap(assay(rld)[select,])
+
+
+```
+
+
+
+Heatmap of the count matrix
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}
+
+pheatmap(assay(vsd)[select,])
+
+```
+
+
+
+Heatmap of sample to sample distances
+========================================================
+
+Another use of the transformed data is sample clustering. Here, we apply the dist function to the transpose
+of the transformed count matrix to get sample-to-sample distances. 
+
+The assay function is used to extract the matrix of normalized values.
+
+```{r,eval=TRUE,echo=TRUE}   
+
+
+rlogcount <- assay(rld)    
+sampleDists <- as.matrix(dist(t(rlogcount)))
+         
+```
+
+========================================================
+
+ Save the plot as png file
+
+```{r,eval=TRUE,echo=TRUE}
+library(RColorBrewer)
+showcols <- brewer.pal(8, "Set1")[1:length(unique(colData(dds)$Group))]
+
+library(gplots)
+png(file="sample_dis_map.png")
+  heatmap.2(as.matrix(sampleDists), key=F, trace="none",
+    col=colorpanel(100, "black", "white"),
+    ColSideColors=showcols[colData(dds)$Group], 
+    RowSideColors=showcols[colData(dds)$Group],
+    margin=c(10, 10), main="Sample Distance Matrix")
+dev.off()
+
+```
+
+
+=======================================================
+
+<div align="center">
+<img src="sample_dis_map.png" alt="gene" height="900" width="900">
+</div>
+
+
+Principal component plot of the samples
+========================================================
+
+**PCA plot** is useful to spot individual sample outliers. 
+
+```{r,eval=TRUE,echo=TRUE}
+plotPCA(rld, intgroup="Group")
+# save the plot
+
+library(ggplot2)
+ggsave(file="PCA_plot_version1.png")
+    
+```
+
+Variations to standard workflow
+========================================================
+
+
+**Factor levels**
+
+By default, R will choose a reference level for factors based on alphabetical order. 
+The comparisons will be based on the alphabetical order of the levels. We can either explicitly tell results which comparison to make using the contrast argument (this will be shown later), or
+we can explicitly set the factors levels.
+
+**Setting the factor levels**
+
+cData$Group <- factor(cData$Group, levels=c("Viv","Hfd"))
+
+or using relevel, just specifying the reference level:
+
+```{r,eval=TRUE,echo=TRUE} 
+
+
+cData$Group<-relevel(cData$Group,ref="Viv")
+
+
+```
+
+
+=========================================================
+
+**Using Contrasts**
+
+Contrasts enable the user to generate results for all  possible
+comparisons: 
+
+Consider an experimental design containing a factor with three levels, say A, B and C.
+We can use contrasts to compare B vs A, of C vs A, and C vs B.
+
+```{r,eval=TRUE,echo=TRUE}    
+ 
+    res_contrast<-results(dds,contrast=c("Group","Hfd","Viv")) 
+
+    
+    summary(res_contrast)
+      
+```
+
+
+
+Exercises
+=========================================================
+
+* [RNAseq Visualization Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercises_Visualization.html)
+
+Solutions
+=========================================================
+
+* [RNAseq Visualization Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_Visualization.html)
+
+
+
+
+Gene Ontology and Pathway Enrichment Analysis
+========================================================
+id: go
+
+We will perform GO analysis using goseq package.
+
+ In order to perform a GO analysis of your RNA-seq data,goseq only requires a simple named vector, which contains two pieces of information.
+
+1 **Measured genes**
+   
+ all genes for which RNA-seq data was gathered for your experiment.  Each element of your vector should be named by a unique gene identifier.
+
+2 **Differentially expressed genes**
+   
+ each element of your vector should be either a 1 or 0, where 1 indicates that the gene is differentially expressed and 0 that it is not.
+
+
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}
+
+library(KEGG.db)
+library(goseq)
+
+# remove the NAs
+
+resdat<- res[complete.cases(res$padj),]
+ 
+degenes<-as.integer(resdat$padj<0.05)
+names(degenes)<-rownames(resdat)
+    
+# remove duplicate gene names
+degenes<-degenes[match(unique(names(degenes)),                                                                                              names(degenes))]
+
+table(degenes)
+```
+
+
+========================================================
+
+**Fitting the probability weighting function (PWF)**
+
+We first need to obtain a weighting for each gene, 
+depending on its length, given by the PWF
+
+
+```{r,eval=TRUE,echo=TRUE}                         
+
+  
+pwf=nullp(degenes,genome="mm9",'ensGene', plot.fit=FALSE)
+  
+  head(pwf)
+```
+
+========================================================
+
+```{r,eval=TRUE,echo=TRUE}
+   plotPWF(pwf)
+```
+
+========================================================
+
+Change the Keggpath id to name in the goseq output
+
+```{r,eval=TRUE,echo=TRUE}
+
+                              
+xx <- as.list(KEGGPATHID2NAME)
+temp <- cbind(names(xx),unlist(xx))
+    
+addKeggTogoseq <- function(JX,temp){
+  for(l in 1:nrow(JX)){
+      if(JX[l,1] %in% temp[,1]){
+          JX[l,"term"] <- temp[temp[,1] %in% JX[l,1],2]
+          JX[l,"ontology"] <- "KEGG"
+      }
+  }
+  return(JX)
+}
+```
+
+========================================================
+
+ Calculate  the  over  and  under  expressed  GO
+categories among DE genes
+
+```{r,eval=TRUE,echo=TRUE}
+    
+
+go<-goseq(pwf,genome="mm9",'ensGene', test.cats=c("GO:BP","GO:MF","KEGG"))
+  
+```
+
+========================================================
+```{r,eval=TRUE,echo=TRUE}
+head(go)
+
+```
+
+========================================================
+```{r,eval=TRUE,echo=TRUE}
+
+restemp<-addKeggTogoseq(go,temp)   
+
+head(restemp)
+    
+```
+
+
+========================================================
+```{r,eval=TRUE,echo=TRUE}
+write.table(restemp,file="GO_Kegg_Wallenius.txt", row.names=F,sep="\t")
+
+write.csv(restemp,file="GO_Kegg_Wallenius.csv", row.names=F)
+                              
+```
+
+
+Exercises
+=========================================================
+
+* [RNAseq GO Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercise_FunctionalAnalysis.html)
+
+
+Solutions
+=========================================================
+
+* [RNAseq GO Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_FunctionalAnalysis.html)
+
+Session Information
+========================================================
+```{r,eval=TRUE,echo=TRUE}
+    sessionInfo()
+```
