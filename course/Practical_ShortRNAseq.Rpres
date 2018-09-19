@@ -183,7 +183,7 @@ Set working directory
 ========================================================
 
 Before running any of the code, we need to set the working directory to the folder we unarchived. 
-You may navigate to the unarchived RNAseq_CBW2018/course folder in the Rstudio menu
+You may navigate to the unarchived LMS_RNAseq_short/course folder in the Rstudio menu
 
 **Session -> Set Working Directory -> Choose Directory**
 
@@ -201,7 +201,7 @@ Use setwd() to set up your directory in the console
 
 ```{r,eval=F} 
 
-setwd("/PathToMyDownload/RNAseq_CBW2018/course")
+setwd("/PathToMyDownload/LMS_RNAseq_short/course")
 
 
 ```
@@ -578,12 +578,12 @@ Coffee break and Exercise
 =========================================================
 
 
-* [RNAseq DE Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercise_BasicDifferentialAnalysis.html)
+* [RNAseq DE Exercises](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Exercise_BasicDifferentialAnalysis.html)
 
 Solutions
 =========================================================
 
-* [RNAseq DE Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_BasicDifferentialAnalysis.html)
+* [RNAseq DE Solutions](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Answers_BasicDifferentialAnalysis.html)
 
 
 
@@ -616,17 +616,22 @@ vsd <- varianceStabilizingTransformation(dds)
 
 ```
 
-Transformation of count data
+Transformation of count data - raw count
 ========================================================
 
 <div align="left">
 <img src="figures/gene.png" alt="gene" height="400" width="600">
 </div>
+
+
+Transformation of count data - rlog
+========================================================
+
 <div align="topright">
 <img src="figures/rlog.png" alt="gene" height="400" width="600">
 </div>
 
-
+Transformation of count data - vst
 ========================================================
 
 <div align="center">
@@ -787,12 +792,12 @@ We can use contrasts to compare B vs A, of C vs A, and C vs B.
 Exercises
 =========================================================
 
-* [RNAseq Visualization Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercises_Visualization.html)
+* [RNAseq Visualization Exercises](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Exercises_Visualization.html)
 
 Solutions
 =========================================================
 
-* [RNAseq Visualization Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_Visualization.html)
+* [RNAseq Visualization Solutions](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Answers_Visualization.html)
 
 
 
@@ -918,13 +923,13 @@ write.csv(restemp,file="GO_Kegg_Wallenius.csv", row.names=F)
 Exercises
 =========================================================
 
-* [RNAseq GO Exercises](http://mrccsc.github.io/RNAseq_short/course/Exercise_FunctionalAnalysis.html)
+* [RNAseq GO Exercises](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Exercise_FunctionalAnalysis.html)
 
 
 Solutions
 =========================================================
 
-* [RNAseq GO Solutions](http://mrccsc.github.io/RNAseq_short/course/Answers_FunctionalAnalysis.html)
+* [RNAseq GO Solutions](https://yfwang27.github.io/RNAseq_CBW2018/course/exercise/Answers_FunctionalAnalysis.html)
 
 Session Information
 ========================================================
